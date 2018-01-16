@@ -26,7 +26,7 @@ class vgg16_convs(Network):
         if self.vertex_reg:
             self.vertex_targets = tf.placeholder(tf.float32, shape=[None, None, None, 3 * num_classes])
             self.vertex_weights = tf.placeholder(tf.float32, shape=[None, None, None, 3 * num_classes])
-            self.poses = tf.placeholder(tf.float32, shape=[None, 13])
+            self.poses = tf.placeholder(tf.float32, shape=[None, 16])
             self.extents = tf.placeholder(tf.float32, shape=[num_classes, 3])
             self.meta_data = tf.placeholder(tf.float32, shape=[None, 1, 1, 48])
 
@@ -167,5 +167,5 @@ class vgg16_convs(Network):
                          .dropout(self.keep_prob_queue, name='drop6')
                          .fc(4096, num_in=4096, name='fc7')
                          .dropout(self.keep_prob_queue, name='drop7')
-                         .fc(4 * self.num_classes, relu=False, name='poses_pred_unnormalized')
+                         .fc(3 * self.num_classes, relu=False, name='poses_pred_unnormalized')
                          .tanh(name='poses_pred'))

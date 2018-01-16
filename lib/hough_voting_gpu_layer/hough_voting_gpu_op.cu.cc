@@ -11,6 +11,8 @@
 #include "hough_voting_gpu_op.h"
 
 #define VERTEX_CHANNELS 3
+#define POSE_CHANNELS 3
+#define GT_CHANNELS 16
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                            \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; \
@@ -253,8 +255,8 @@ __global__ void compute_rois_kernel(const int nthreads, float* top_box, float* t
       int gt_ind = -1;
       for (int i = 0; i < num_gt; i++)
       {
-        int gt_batch = int(gt[i * 13 + 0]);
-        int gt_id = int(gt[i * 13 + 1]);
+        int gt_batch = int(gt[i * GT_CHANNELS + 0]);
+        int gt_id = int(gt[i * GT_CHANNELS + 1]);
         if(cls == gt_id && batch_index == gt_batch)
         {
           gt_ind = i;
@@ -264,20 +266,16 @@ __global__ void compute_rois_kernel(const int nthreads, float* top_box, float* t
 
       if (gt_ind != -1)
       {
-        float overlap = compute_box_overlap(cls, extents, meta_data, gt + gt_ind * 13, top_box + roi_index * 6 + 2);
+        float overlap = compute_box_overlap(cls, extents, meta_data, gt + gt_ind * GT_CHANNELS, top_box + roi_index * 6 + 2);
         if (overlap > 0.2)
         {
           for (int i = 0; i < 9; i++)
           {
-            top_target[(roi_index + i) * 4 * num_classes + 4 * cls + 0] = gt[gt_ind * 13 + 6];
-            top_target[(roi_index + i) * 4 * num_classes + 4 * cls + 1] = gt[gt_ind * 13 + 7];
-            top_target[(roi_index + i) * 4 * num_classes + 4 * cls + 2] = gt[gt_ind * 13 + 8];
-            top_target[(roi_index + i) * 4 * num_classes + 4 * cls + 3] = gt[gt_ind * 13 + 9];
-
-            top_weight[(roi_index + i) * 4 * num_classes + 4 * cls + 0] = 1;
-            top_weight[(roi_index + i) * 4 * num_classes + 4 * cls + 1] = 1;
-            top_weight[(roi_index + i) * 4 * num_classes + 4 * cls + 2] = 1;
-            top_weight[(roi_index + i) * 4 * num_classes + 4 * cls + 3] = 1;
+            for (int j = 0; j < POSE_CHANNELS; j++)
+            {
+              top_target[(roi_index + i) * POSE_CHANNELS * num_classes + POSE_CHANNELS * cls + j] = gt[gt_ind * GT_CHANNELS + 13 + j];
+              top_weight[(roi_index + i) * POSE_CHANNELS * num_classes + POSE_CHANNELS * cls + j] = 1;
+            }
           }
         }
       }
@@ -389,8 +387,8 @@ void reset_outputs(float* top_box, float* top_pose, float* top_target, float* to
   int num = 1024;
   cudaMemset(top_box, 0, num * 6 * sizeof(float));
   cudaMemset(top_pose, 0, num * 7 * sizeof(float));
-  cudaMemset(top_target, 0, num * 4 *num_classes * sizeof(float));
-  cudaMemset(top_weight, 0, num * 4 * num_classes * sizeof(float));
+  cudaMemset(top_target, 0, num * POSE_CHANNELS *num_classes * sizeof(float));
+  cudaMemset(top_weight, 0, num * POSE_CHANNELS * num_classes * sizeof(float));
   cudaMemset(num_rois, 0, sizeof(int));
 }
 
@@ -406,8 +404,8 @@ void copy_outputs(float* top_box, float* top_pose, float* top_target, float* top
 {
   cudaMemcpy(top_box_final, top_box, num_rois * 6 * sizeof(float), cudaMemcpyDeviceToDevice);
   cudaMemcpy(top_pose_final, top_pose, num_rois * 7 * sizeof(float), cudaMemcpyDeviceToDevice);
-  cudaMemcpy(top_target_final, top_target, num_rois * 4 * num_classes * sizeof(float), cudaMemcpyDeviceToDevice);
-  cudaMemcpy(top_weight_final, top_weight, num_rois * 4 * num_classes * sizeof(float), cudaMemcpyDeviceToDevice);
+  cudaMemcpy(top_target_final, top_target, num_rois * POSE_CHANNELS * num_classes * sizeof(float), cudaMemcpyDeviceToDevice);
+  cudaMemcpy(top_weight_final, top_weight, num_rois * POSE_CHANNELS * num_classes * sizeof(float), cudaMemcpyDeviceToDevice);
 }
 
 

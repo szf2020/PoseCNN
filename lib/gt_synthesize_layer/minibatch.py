@@ -17,6 +17,8 @@ from utils.se3 import *
 import scipy.io
 # from normals import gpu_normals
 from transforms3d.quaternions import mat2quat, quat2mat
+from transforms3d.euler import mat2euler, euler2mat
+import math
 
 def get_minibatch(roidb, extents, num_classes, backgrounds, intrinsic_matrix, db_inds_syn, is_syn):
     """Given a roidb, construct a minibatch sampled from it."""
@@ -190,7 +192,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
     if cfg.TRAIN.VERTEX_REG_2D or cfg.TRAIN.VERTEX_REG_3D:
         processed_vertex_targets = []
         processed_vertex_weights = []
-        pose_blob = np.zeros((0, 13), dtype=np.float32)
+        pose_blob = np.zeros((0, 16), dtype=np.float32)
     else:
         pose_blob = []
 
@@ -260,7 +262,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                 processed_vertex_weights.append(vertex_weights)
 
                 num = poses.shape[2]
-                qt = np.zeros((num, 13), dtype=np.float32)
+                qt = np.zeros((num, 16), dtype=np.float32)
                 for j in xrange(num):
                     R = poses[:, :3, j]
                     T = poses[:, 3, j]
@@ -269,7 +271,8 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                     qt[j, 1] = meta_data['cls_indexes'][0, j]
                     qt[j, 2:6] = 0  # fill box later
                     qt[j, 6:10] = mat2quat(R)
-                    qt[j, 10:] = T
+                    qt[j, 10:13] = T
+                    qt[j, 13:16] = np.array(mat2euler(R)) / math.pi
             else:
                 poses = meta_data['poses']
                 if len(poses.shape) == 2:
@@ -291,7 +294,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                 processed_vertex_weights.append(vertex_weights)
 
                 num = poses.shape[2]
-                qt = np.zeros((num, 13), dtype=np.float32)
+                qt = np.zeros((num, 16), dtype=np.float32)
                 for j in xrange(num):
                     R = poses[:, :3, j]
                     T = poses[:, 3, j]
@@ -301,7 +304,8 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                     qt[j, 1] = meta_data['cls_indexes'][j, 0]
                     qt[j, 2:6] = 0  # fill box later, roidb[i]['boxes'][j, :]
                     qt[j, 6:10] = mat2quat(R)
-                    qt[j, 10:] = T
+                    qt[j, 10:13] = T
+                    qt[j, 13:16] = np.array(mat2euler(R)) / math.pi
 
             pose_blob = np.concatenate((pose_blob, qt), axis=0)
 
@@ -490,7 +494,6 @@ def _vis_minibatch(im_blob, im_depth_blob, depth_blob, label_blob, meta_data_blo
         # project the 3D box to image
         metadata = meta_data_blob[i, 0, 0, :]
         intrinsic_matrix = metadata[:9].reshape((3,3))
-        print intrinsic_matrix
         for j in xrange(pose_blob.shape[0]):
             if pose_blob[j, 0] != i:
                 continue
@@ -502,8 +505,10 @@ def _vis_minibatch(im_blob, im_depth_blob, depth_blob, label_blob, meta_data_blo
             
             # projection
             RT = np.zeros((3, 4), dtype=np.float32)
-            RT[:3, :3] = quat2mat(pose_blob[j, 6:10])
-            RT[:, 3] = pose_blob[j, 10:]
+            # RT[:3, :3] = quat2mat(pose_blob[j, 6:10])
+            RT[:3, :3] = euler2mat(pose_blob[j, 13] * math.pi, pose_blob[j, 14] * math.pi, pose_blob[j, 15] * math.pi)
+            print pose_blob[j, 13], pose_blob[j, 14], pose_blob[j, 15]
+            RT[:, 3] = pose_blob[j, 10:13]
             x2d = np.matmul(intrinsic_matrix, np.matmul(RT, x3d))
             x2d[0, :] = np.divide(x2d[0, :], x2d[2, :])
             x2d[1, :] = np.divide(x2d[1, :], x2d[2, :])

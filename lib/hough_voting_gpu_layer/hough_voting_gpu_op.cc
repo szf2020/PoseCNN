@@ -29,6 +29,8 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor_shape.h"
 
 #define VERTEX_CHANNELS 3
+#define POSE_CHANNELS 3
+#define GT_CHANNELS 16
 
 using namespace tensorflow;
 typedef Eigen::ThreadPoolDevice CPUDevice;
@@ -99,7 +101,7 @@ void allocate_outputs(OpKernelContext* context, Tensor* top_box_tensor, Tensor* 
   TensorShapeUtils::MakeShape(dims, 2, &output_shape_1);
   OP_REQUIRES_OK(context, context->allocate_temp(DT_FLOAT, output_shape_1, top_pose_tensor));
 
-  dims[1] = 4 * num_classes;
+  dims[1] = POSE_CHANNELS * num_classes;
   TensorShape output_shape_2;
   TensorShapeUtils::MakeShape(dims, 2, &output_shape_2);
   OP_REQUIRES_OK(context, context->allocate_temp(DT_FLOAT, output_shape_2, top_target_tensor));
@@ -232,20 +234,20 @@ class HoughvotinggpuOp : public OpKernel {
     float* top_pose = top_pose_tensor->template flat<float>().data();
 
     // top target
-    dims[1] = 4 * num_classes;
+    dims[1] = POSE_CHANNELS * num_classes;
     TensorShape output_shape_target;
     TensorShapeUtils::MakeShape(dims, 2, &output_shape_target);
 
     Tensor* top_target_tensor = NULL;
     OP_REQUIRES_OK(context, context->allocate_output(2, output_shape_target, &top_target_tensor));
     float* top_target = top_target_tensor->template flat<float>().data();
-    memset(top_target, 0, outputs.size() * 4 * num_classes *sizeof(T));
+    memset(top_target, 0, outputs.size() * POSE_CHANNELS * num_classes *sizeof(T));
 
     // top weight
     Tensor* top_weight_tensor = NULL;
     OP_REQUIRES_OK(context, context->allocate_output(3, output_shape_target, &top_weight_tensor));
     float* top_weight = top_weight_tensor->template flat<float>().data();
-    memset(top_weight, 0, outputs.size() * 4 * num_classes *sizeof(T));
+    memset(top_weight, 0, outputs.size() * POSE_CHANNELS * num_classes *sizeof(T));
     
     for(int n = 0; n < outputs.size(); n++)
     {
@@ -364,7 +366,7 @@ class HoughvotinggpuOp<Eigen::GpuDevice, T> : public OpKernel {
     float* top_pose_final = top_pose_tensor->flat<float>().data();
 
     // top target
-    dims[1] = 4 * num_classes;
+    dims[1] = POSE_CHANNELS * num_classes;
     TensorShape output_shape_target;
     TensorShapeUtils::MakeShape(dims, 2, &output_shape_target);
 
@@ -723,7 +725,8 @@ void compute_target_weight(int height, int width, float* target, float* weight, 
   std::vector<cv::Rect> bb2Ds_gt(num_gt);
   for (int i = 0; i < num_gt; i++)
   {
-    Eigen::Quaternionf quaternion(poses_gt[i * 13 + 6], poses_gt[i * 13 + 7], poses_gt[i * 13 + 8], poses_gt[i * 13 + 9]);
+    Eigen::Quaternionf quaternion(poses_gt[i * GT_CHANNELS + 6], poses_gt[i * GT_CHANNELS + 7], 
+                                  poses_gt[i * GT_CHANNELS + 8], poses_gt[i * GT_CHANNELS + 9]);
     Eigen::Matrix3f rmatrix = quaternion.toRotationMatrix();
     cv::Mat rmat_trans = cv::Mat(3, 3, CV_32F, rmatrix.data());
     cv::Mat rmat;
@@ -731,11 +734,11 @@ void compute_target_weight(int height, int width, float* target, float* weight, 
     cv::Mat rvec(3, 1, CV_64F);
     cv::Rodrigues(rmat, rvec);
     cv::Mat tvec(3, 1, CV_64F);
-    tvec.at<double>(0, 0) = poses_gt[i * 13 + 10];
-    tvec.at<double>(1, 0) = poses_gt[i * 13 + 11];
-    tvec.at<double>(2, 0) = poses_gt[i * 13 + 12];
+    tvec.at<double>(0, 0) = poses_gt[i * GT_CHANNELS + 10];
+    tvec.at<double>(1, 0) = poses_gt[i * GT_CHANNELS + 11];
+    tvec.at<double>(2, 0) = poses_gt[i * GT_CHANNELS + 12];
 
-    int objID = int(poses_gt[i * 13 + 1]);
+    int objID = int(poses_gt[i * GT_CHANNELS + 1]);
     std::vector<cv::Point3f> bb3D = bb3Ds[objID-1];
     bb2Ds_gt[i] = getBB2D(width, height, bb3D, camMat, rvec, tvec);
   }
@@ -750,8 +753,8 @@ void compute_target_weight(int height, int width, float* target, float* weight, 
     int gt_ind = -1;
     for (int j = 0; j < num_gt; j++)
     {
-      int gt_batch = int(poses_gt[j * 13 + 0]);
-      int gt_id = int(poses_gt[j * 13 + 1]);
+      int gt_batch = int(poses_gt[j * GT_CHANNELS + 0]);
+      int gt_id = int(poses_gt[j * GT_CHANNELS + 1]);
       if(class_id == gt_id && batch_id == gt_batch)
       {
         gt_ind = j;
@@ -772,16 +775,12 @@ void compute_target_weight(int height, int width, float* target, float* weight, 
     float overlap = getIoU(bb2D, bb2Ds_gt[gt_ind]);
     if (overlap < threshold)
       continue;
-
-    target[i * 4 * num_classes + 4 * class_id + 0] = poses_gt[gt_ind * 13 + 6];
-    target[i * 4 * num_classes + 4 * class_id + 1] = poses_gt[gt_ind * 13 + 7];
-    target[i * 4 * num_classes + 4 * class_id + 2] = poses_gt[gt_ind * 13 + 8];
-    target[i * 4 * num_classes + 4 * class_id + 3] = poses_gt[gt_ind * 13 + 9];
-
-    weight[i * 4 * num_classes + 4 * class_id + 0] = 1;
-    weight[i * 4 * num_classes + 4 * class_id + 1] = 1;
-    weight[i * 4 * num_classes + 4 * class_id + 2] = 1;
-    weight[i * 4 * num_classes + 4 * class_id + 3] = 1;
+    
+    for (int j = 0; j < POSE_CHANNELS; j++)
+    {
+      target[i * POSE_CHANNELS * num_classes + POSE_CHANNELS * class_id + j] = poses_gt[gt_ind * GT_CHANNELS + 13 + j];
+      weight[i * POSE_CHANNELS * num_classes + POSE_CHANNELS * class_id + j] = 1;
+    }
   }
 }
 
