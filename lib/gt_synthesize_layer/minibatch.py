@@ -192,7 +192,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
     if cfg.TRAIN.VERTEX_REG_2D or cfg.TRAIN.VERTEX_REG_3D:
         processed_vertex_targets = []
         processed_vertex_weights = []
-        pose_blob = np.zeros((0, 16), dtype=np.float32)
+        pose_blob = np.zeros((0, 19), dtype=np.float32)
     else:
         pose_blob = []
 
@@ -262,7 +262,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                 processed_vertex_weights.append(vertex_weights)
 
                 num = poses.shape[2]
-                qt = np.zeros((num, 16), dtype=np.float32)
+                qt = np.zeros((num, 19), dtype=np.float32)
                 for j in xrange(num):
                     R = poses[:, :3, j]
                     T = poses[:, 3, j]
@@ -272,7 +272,13 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                     qt[j, 2:6] = 0  # fill box later
                     qt[j, 6:10] = mat2quat(R)
                     qt[j, 10:13] = T
-                    qt[j, 13:16] = np.array(mat2euler(R)) / math.pi
+                    angles = mat2euler(R);
+                    qt[j, 13] = math.sin(angles[0])
+                    qt[j, 14] = math.cos(angles[0])
+                    qt[j, 15] = math.sin(angles[1])
+                    qt[j, 16] = math.cos(angles[1])
+                    qt[j, 17] = math.sin(angles[2])
+                    qt[j, 18] = math.cos(angles[2])
             else:
                 poses = meta_data['poses']
                 if len(poses.shape) == 2:
@@ -294,7 +300,7 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                 processed_vertex_weights.append(vertex_weights)
 
                 num = poses.shape[2]
-                qt = np.zeros((num, 16), dtype=np.float32)
+                qt = np.zeros((num, 19), dtype=np.float32)
                 for j in xrange(num):
                     R = poses[:, :3, j]
                     T = poses[:, 3, j]
@@ -305,7 +311,13 @@ def _get_label_blob(roidb, intrinsic_matrix, num_classes, db_inds_syn, im_scales
                     qt[j, 2:6] = 0  # fill box later, roidb[i]['boxes'][j, :]
                     qt[j, 6:10] = mat2quat(R)
                     qt[j, 10:13] = T
-                    qt[j, 13:16] = np.array(mat2euler(R)) / math.pi
+                    angles = mat2euler(R);
+                    qt[j, 13] = math.sin(angles[0])
+                    qt[j, 14] = math.cos(angles[0])
+                    qt[j, 15] = math.sin(angles[1])
+                    qt[j, 16] = math.cos(angles[1])
+                    qt[j, 17] = math.sin(angles[2])
+                    qt[j, 18] = math.cos(angles[2])
 
             pose_blob = np.concatenate((pose_blob, qt), axis=0)
 
@@ -506,8 +518,11 @@ def _vis_minibatch(im_blob, im_depth_blob, depth_blob, label_blob, meta_data_blo
             # projection
             RT = np.zeros((3, 4), dtype=np.float32)
             # RT[:3, :3] = quat2mat(pose_blob[j, 6:10])
-            RT[:3, :3] = euler2mat(pose_blob[j, 13] * math.pi, pose_blob[j, 14] * math.pi, pose_blob[j, 15] * math.pi)
-            print pose_blob[j, 13], pose_blob[j, 14], pose_blob[j, 15]
+            alpha = math.atan2(pose_blob[j, 13], pose_blob[j, 14])
+            beta = math.atan2(pose_blob[j, 15], pose_blob[j, 16])
+            gamma = math.atan2(pose_blob[j, 17], pose_blob[j, 18])
+            RT[:3, :3] = euler2mat(alpha, beta, gamma)
+            print pose_blob[j, 13], pose_blob[j, 14], pose_blob[j, 15], pose_blob[j, 16], pose_blob[j, 17], pose_blob[j, 18]
             RT[:, 3] = pose_blob[j, 10:13]
             x2d = np.matmul(intrinsic_matrix, np.matmul(RT, x3d))
             x2d[0, :] = np.divide(x2d[0, :], x2d[2, :])

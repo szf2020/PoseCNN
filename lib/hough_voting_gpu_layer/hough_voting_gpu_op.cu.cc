@@ -11,8 +11,8 @@
 #include "hough_voting_gpu_op.h"
 
 #define VERTEX_CHANNELS 3
-#define POSE_CHANNELS 3
-#define GT_CHANNELS 16
+#define POSE_CHANNELS 6
+#define GT_CHANNELS 19
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                            \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; \

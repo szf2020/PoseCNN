@@ -29,8 +29,8 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor_shape.h"
 
 #define VERTEX_CHANNELS 3
-#define POSE_CHANNELS 3
-#define GT_CHANNELS 16
+#define POSE_CHANNELS 6
+#define GT_CHANNELS 19
 
 using namespace tensorflow;
 typedef Eigen::ThreadPoolDevice CPUDevice;

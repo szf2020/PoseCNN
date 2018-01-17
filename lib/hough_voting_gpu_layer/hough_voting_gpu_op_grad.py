@@ -10,8 +10,8 @@ def _hough_voting_gpu_shape(op):
 
   output_shape_0 = tf.TensorShape([None, 6])
   output_shape_1 = tf.TensorShape([None, 7])
-  output_shape_2 = tf.TensorShape([None, 3 * num_classes])
-  output_shape_3 = tf.TensorShape([None, 3 * num_classes])
+  output_shape_2 = tf.TensorShape([None, 6 * num_classes])
+  output_shape_3 = tf.TensorShape([None, 6 * num_classes])
   return [output_shape_0, output_shape_1, output_shape_2, output_shape_3]
 
 @ops.RegisterGradient("Houghvotinggpu")
