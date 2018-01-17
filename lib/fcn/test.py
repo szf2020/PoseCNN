@@ -22,7 +22,8 @@ import math
 import tensorflow as tf
 import time
 from synthesize import synthesizer
-from transforms3d.quaternions import quat2mat, mat2quat
+from transforms3d.quaternions import mat2quat, quat2mat
+from transforms3d.euler import mat2euler, euler2mat
 import scipy.io
 
 # from normals import gpu_normals
@@ -150,7 +151,7 @@ def im_segment_single_frame(sess, net, im, im_depth, meta_data, voxelizer, exten
     width = int(im_depth.shape[1] * im_scale)
     label_blob = np.ones((1, height, width, num_classes), dtype=np.float32)
 
-    pose_blob = np.zeros((1, 13), dtype=np.float32)
+    pose_blob = np.zeros((1, 19), dtype=np.float32)
     vertex_target_blob = np.zeros((1, height, width, 3*num_classes), dtype=np.float32)
     vertex_weight_blob = np.zeros((1, height, width, 3*num_classes), dtype=np.float32)
 
@@ -196,7 +197,11 @@ def im_segment_single_frame(sess, net, im, im_depth, meta_data, voxelizer, exten
                 for i in xrange(num):
                     class_id = int(rois[i, 1])
                     if class_id >= 0:
-                        poses[i, :4] = poses_pred[i, 4*class_id:4*class_id+4]
+                        alpha = math.atan2(poses_pred[i, 6*class_id], poses_pred[i, 6*class_id+1])
+                        beta = math.atan2(poses_pred[i, 6*class_id+2], poses_pred[i, 6*class_id+3])
+                        gamma = math.atan2(poses_pred[i, 6*class_id+4], poses_pred[i, 6*class_id+5])
+                        R = euler2mat(alpha, beta, gamma)
+                        poses[i, :4] = mat2quat(R)
             else:
                 labels_2d, probs, vertex_pred, rois, poses = \
                     sess.run([net.get_output('label_2d'), net.get_output('prob_normalized'), net.get_output('vertex_pred'), net.get_output('rois'), net.get_output('poses_init')])
@@ -1006,8 +1011,8 @@ def test_net_single_frame(sess, net, imdb, weights_filename, model_filename):
         colors[i * 3 + 2] = imdb._class_colors[i][2]
 
     if cfg.TEST.VISUALIZE:
-        # perm = np.random.permutation(np.arange(num_images))
-        perm = xrange(1700, num_images)
+        perm = np.random.permutation(np.arange(num_images))
+        # perm = xrange(440, num_images)
     else:
         perm = xrange(num_images)
 
