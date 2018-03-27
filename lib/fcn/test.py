@@ -24,7 +24,7 @@ import math
 import tensorflow as tf
 import time
 from transforms3d.quaternions import quat2mat, mat2quat
-from synthesize import synthesizer
+#from synthesize import synthesizer
 import scipy.io
 from scipy.optimize import minimize
 from normals import gpu_normals
@@ -1200,8 +1200,8 @@ def test_net_single_frame(sess, net, imdb, weights_filename, model_filename):
                 backgrounds = cPickle.load(fid)
             print 'backgrounds loaded from {}'.format(cache_file)
 
-    if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
-        SYN = synthesizer.PySynthesizer(cfg.CAD, cfg.POSE)
+    #if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
+    #    SYN = synthesizer.PySynthesizer(cfg.CAD, cfg.POSE)
 
     for i in perm:
 
@@ -1827,8 +1827,8 @@ def test_net_images(sess, net, imdb, weights_filename, rgb_filenames, depth_file
     else:
         perm = xrange(num_images)
 
-    if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
-        SYN = synthesizer.PySynthesizer(cfg.CAD, cfg.POSE)
+    #if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
+    #    SYN = synthesizer.PySynthesizer(cfg.CAD, cfg.POSE)
 
     for i in perm:
 

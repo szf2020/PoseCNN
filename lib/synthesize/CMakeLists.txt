@@ -28,7 +28,7 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(xFusion_ROOT "/home/yuxiang/Projects/Deep_Pose/lib/kinect_fusion")
+set(xFusion_ROOT "/notebooks/PoseCNN/lib/kinect_fusion")
 set(xFusion_INCLUDE_DIRS ${xFusion_ROOT}/include)
 set(xFusion_LIBRARY_DIRS ${xFusion_ROOT}/build)
 set(xFusion_LIBRARIES kfusion)

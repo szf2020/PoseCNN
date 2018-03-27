@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  pose-cnn:
+    image: pose-cnn/demo:latest
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /home/logan/workspace/PoseCNN:/notebooks/PoseCNN
+    environment:
+      - DISPLAY=unix${DISPLAY}
+      - ROS_MASTER_URI=${ROS_MASTER_URI}
+      - QT_X11_NO_MITSHM=1
+    devices:
+      - "/dev/dri:/dev/dri"
+      - "/dev/nvidia0:/dev/nvidia0"
+      - "/dev/nvidia-modeset:/dev/nvidia-modeset"
+    container_name: pose-cnn
+    network_mode: host
+    tty: true
+    stdin_open: true

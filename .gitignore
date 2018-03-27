@@ -10,3 +10,7 @@ ros/build/*
 ros/data/*
 ros/devel/*
 images/*
+.kdev4/
+*.kdev4
+*.yml
+data/LOV/models/
