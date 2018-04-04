@@ -71,7 +71,7 @@ RUN cd tensorflow && \
   ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 && \
   export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:/usr/local/cuda/lib64:${LD_LIBRARY_PATH} && \
   ls -ahl && \
-  bazel build --config=opt --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0"  //tensorflow/tools/pip_package:build_pip_package
+  bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
   
 RUN cd tensorflow && \
   bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg --gpu && \
