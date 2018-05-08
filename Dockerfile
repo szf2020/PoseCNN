@@ -75,7 +75,7 @@ RUN cd tensorflow && \
   
 RUN cd tensorflow && \
   bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg --gpu && \
-  pip install /tmp/tensorflow_pkg/tensorflow_gpu-1.4.1-cp27-cp27mu-linux_x86_64.whl
+  pip install /tmp/tensorflow_pkg/tensorflow_gpu*.whl
   
 ## install PoseCNN dependencies  
 RUN git clone https://github.com/stevenlovegrove/Pangolin.git && \
@@ -131,6 +131,15 @@ RUN wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.1.tar.gz && \
   cmake .. && \
   make -j 4 && \
   make install
+
+#install metis for synthesizer
+RUN wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz && \
+  tar xzf metis-5.1.0.tar.gz && \
+  rm metis-5.1.0.tar.gz && \
+  cd metis-5.1.0/ && \
+  make config && \
+  make && \
+  make install
   
 # install PoseCNN
 # RUN git clone https://github.com/yuxng/PoseCNN.git
@@ -151,3 +160,5 @@ LABEL com.nvidia.volumes.needed="nvidia_driver"
 #ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 #  
 ## note: ./make.sh, opencv; synthesize: pcl, build kinect_fusion
+
+
